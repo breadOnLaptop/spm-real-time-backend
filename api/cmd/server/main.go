@@ -36,7 +36,6 @@ func main() {
 	}
 
 	wsManager := websocket.NewManager()
-	go wsManager.Run()
 
 	telemetryService := service.NewTelemetryService(dbConn, redisClient, wsManager)
 	telemetryService.StartDatabasePruner()
