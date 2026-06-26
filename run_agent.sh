@@ -10,8 +10,12 @@ echo "========================================="
 echo "[1/4] Stopping any existing agent containers..."
 docker rm -f $(docker ps -a -q --filter ancestor=spm_agent) 2>/dev/null || true
 
-echo "[2/4] Building the C++ Agent Docker Image..."
-docker build -t spm_agent ./agent
+if [[ "$(docker images -q spm_agent 2> /dev/null)" == "" ]]; then
+  echo "[2/4] Building the C++ Agent Docker Image (First time only)..."
+  docker build -t spm_agent ./agent
+else
+  echo "[2/4] Image 'spm_agent' already exists. Skipping build to save time..."
+fi
 
 echo "[3/4] Launching the Agent in the background..."
 docker run -d --name spm_agent_live spm_agent ./spm_agent $ENDPOINT
