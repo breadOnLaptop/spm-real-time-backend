@@ -8,7 +8,10 @@ const DatabaseView = () => {
     const checkHealth = async () => {
       try {
         const host = window.location.hostname || 'localhost';
-        const res = await fetch(`http://${host}:8000/api/health`);
+        const defaultApi = window.location.protocol === 'https:' ? `https://${host}/api` : `http://${host}:8000/api`;
+        const apiUrl = import.meta.env.VITE_API_URL || defaultApi;
+        
+        const res = await fetch(`${apiUrl}/health`);
         const data = await res.json();
         setHealth(data);
       } catch (e) {
@@ -22,7 +25,9 @@ const DatabaseView = () => {
 
   const handleBackup = () => {
     const host = window.location.hostname || 'localhost';
-    window.location.href = `http://${host}:8000/api/backup`;
+    const defaultApi = window.location.protocol === 'https:' ? `https://${host}/api` : `http://${host}:8000/api`;
+    const apiUrl = import.meta.env.VITE_API_URL || defaultApi;
+    window.location.href = `${apiUrl}/backup`;
   };
 
   return (

@@ -1,8 +1,8 @@
 export const createWebSocketConnection = (onMessage) => {
   const host = window.location.hostname || 'localhost';
-  const ws = new WebSocket(`ws://${host}:8000/api/ws`); // Update to match API router prefix if any, wait, it's /ws, but router is /api? 
-  // Let me check my api router: api_router.include_router(websockets.router, tags=["websockets"]) 
-  // without prefix, so it is just /ws.
+  const defaultWs = window.location.protocol === 'https:' ? `wss://${host}/api/ws` : `ws://${host}:8000/api/ws`;
+  const wsUrl = import.meta.env.VITE_WS_URL || defaultWs;
+  const ws = new WebSocket(wsUrl);
   
   ws.onmessage = (event) => {
     try {
