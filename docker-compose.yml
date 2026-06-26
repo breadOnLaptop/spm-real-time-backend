@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  spm_db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "spm_admin"
+      POSTGRES_PASSWORD: "secure_cryptographic_password"
+      POSTGRES_DB: "spm_telemetry"
+    volumes:
+      - spm_pg_data:/var/lib/postgresql/data
+    networks:
+      - spm_backend
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+
+  spm_cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 1gb --maxmemory-policy allkeys-lru
+    volumes:
+      - spm_redis_data:/data
+    networks:
+      - spm_backend
+
+  spm_api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      - spm_db
+      - spm_cache
+    ports:
+      - "8000:8000"
+    networks:
+      - spm_backend
+    environment:
+      - DATABASE_URL=postgres://spm_admin:secure_cryptographic_password@spm_db:5432/spm_telemetry?sslmode=disable
+      - REDIS_URL=redis://spm_cache:6379/0
+
+  spm_frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - spm_backend
+
+  spm_agent:
+    build: ./agent
+    restart: unless-stopped
+    depends_on:
+      - spm_api
+    networks:
+      - spm_backend
+
+volumes:
+  spm_pg_data:
+  spm_redis_data:
+
+networks:
+  spm_backend:
+    driver: bridge

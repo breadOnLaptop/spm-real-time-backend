@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package telemetry;
+option go_package = "spm-api/proto";
+
+message ProcessInfo {
+    int32 pid = 1;
+    string executable_name = 2;
+    double resource_utilization = 3;
+}
+
+message TelemetryPayload {
+    string agent_id = 1;
+    double cpu_utilization = 2;
+    double memory_utilization = 3;
+    double disk_io = 4;
+    double network_ingress = 5;
+    double network_egress = 6;
+    double temperature = 7;
+    int32 uptime = 8;
+    string status = 9;
+    repeated ProcessInfo top_processes = 10;
+}
+
+message TelemetryResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string database = 1;
+    string redis = 2;
+}
+
+service TelemetryService {
+    // Standard Unary call
+    rpc SendTelemetry (TelemetryPayload) returns (TelemetryResponse);
+    // Streaming call for real-time edge agents
+    rpc StreamTelemetry (stream TelemetryPayload) returns (TelemetryResponse);
+    rpc CheckHealth (HealthRequest) returns (HealthResponse);
+}

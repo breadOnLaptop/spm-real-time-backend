@@ -1,0 +1,23 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Go
+api/spm-api
+
+# C++ Build
+agent/build/
+
+# Mac
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+*.tar
+
+# Notes
+PITCH.md
