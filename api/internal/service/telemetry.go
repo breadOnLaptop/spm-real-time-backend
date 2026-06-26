@@ -74,7 +74,7 @@ func (s *TelemetryService) ProcessTelemetry(payload TelemetryPayload) error {
 	if err == nil {
 		if s.redis != nil {
 			ctx := context.Background()
-			s.redis.Set(ctx, "agent:"+payload.AgentID+":latest", payloadBytes, 60*time.Second)
+			s.redis.Set(ctx, "agent:"+payload.AgentID+":latest", payloadBytes, 24*time.Hour)
 		}
 		s.wsManager.Broadcast(payloadBytes)
 	}
