@@ -2,7 +2,13 @@
 #include <iostream>
 
 ApiClient::ApiClient(const std::string& endpoint) {
-    auto channel = grpc::CreateChannel(endpoint, grpc::InsecureChannelCredentials());
+    std::shared_ptr<grpc::ChannelCredentials> creds;
+    if (endpoint.find(":443") != std::string::npos || endpoint.find("onrender.com") != std::string::npos) {
+        creds = grpc::SslCredentials(grpc::SslCredentialsOptions());
+    } else {
+        creds = grpc::InsecureChannelCredentials();
+    }
+    auto channel = grpc::CreateChannel(endpoint, creds);
     stub_ = telemetry::TelemetryService::NewStub(channel);
 }
 

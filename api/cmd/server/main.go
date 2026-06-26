@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"net"
+	"strings"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"google.golang.org/grpc"
 	grpc_internal "spm-api/internal/grpc"
@@ -86,27 +89,28 @@ func main() {
 		w.Write([]byte(csv))
 	})
 
-	http.HandleFunc("/ws", wsManager.HandleConnection)
-
-	// Start gRPC Server
-	lis, err := net.Listen("tcp", ":50051")
-	if err != nil {
-		log.Fatalf("failed to listen on 50051: %v", err)
-	}
+	// Start Multiplexed gRPC & HTTP Server
 	grpcServer := grpc.NewServer()
 	grpcHandler := grpc_internal.NewTelemetryServer(telemetryService)
 	pb.RegisterTelemetryServiceServer(grpcServer, grpcHandler)
-	
-	go func() {
-		log.Println("gRPC Server starting on :50051")
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("failed to serve gRPC: %v", err)
-		}
-	}()
 
-	// Start HTTP Server
-	log.Printf("HTTP Server starting on port %s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, nil); err != nil {
+	mux := http.DefaultServeMux
+	mixedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
+			grpcServer.ServeHTTP(w, r)
+		} else {
+			mux.ServeHTTP(w, r)
+		}
+	})
+
+	h2s := &http2.Server{}
+	h1s := &http.Server{
+		Addr:    ":" + cfg.Port,
+		Handler: h2c.NewHandler(mixedHandler, h2s),
+	}
+
+	log.Printf("Multiplexed Server (HTTP/gRPC) starting on port %s", cfg.Port)
+	if err := h1s.ListenAndServe(); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
 }
