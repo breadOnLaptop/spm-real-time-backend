@@ -36,7 +36,10 @@ func main() {
 	}
 
 	wsManager := websocket.NewManager()
+	go wsManager.Run()
+
 	telemetryService := service.NewTelemetryService(dbConn, redisClient, wsManager)
+	telemetryService.StartDatabasePruner()
 
 	// WebSockets
 	http.HandleFunc("/api/ws", wsManager.HandleConnection)

@@ -155,3 +155,39 @@ func (s *TelemetryService) CheckHealth() (string, string) {
 	return dbStatus, redisStatus
 }
 
+func (s *TelemetryService) StartDatabasePruner() {
+	if s.db == nil { return }
+	go func() {
+		for {
+			time.Sleep(1 * time.Minute)
+			// Keep only latest 100 telemetry logs per agent
+			_, err := s.db.Exec(`
+				DELETE FROM telemetry 
+				WHERE id IN (
+					SELECT id FROM (
+						SELECT id, ROW_NUMBER() OVER(PARTITION BY agent_id ORDER BY timestamp DESC) as rn
+						FROM telemetry
+					) t WHERE t.rn > 100
+				)
+			`)
+			if err != nil {
+				log.Printf("DB Prune Error (Telemetry): %v", err)
+			}
+			
+			// Keep only latest 500 process logs per agent
+			_, err = s.db.Exec(`
+				DELETE FROM processes 
+				WHERE id IN (
+					SELECT id FROM (
+						SELECT id, ROW_NUMBER() OVER(PARTITION BY agent_id ORDER BY timestamp DESC) as rn
+						FROM processes
+					) t WHERE t.rn > 500
+				)
+			`)
+			if err != nil {
+				log.Printf("DB Prune Error (Processes): %v", err)
+			}
+		}
+	}()
+}
+
