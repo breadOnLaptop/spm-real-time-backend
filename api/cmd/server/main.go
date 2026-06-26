@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"io"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"google.golang.org/protobuf/proto"
 
 	"google.golang.org/grpc"
 	grpc_internal "spm-api/internal/grpc"
@@ -48,6 +50,27 @@ func main() {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		telemetryService.ProcessTelemetry(payload)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	http.HandleFunc("/api/telemetry/binary", func(w http.ResponseWriter, r *http.Request) {
+		setupCORS(w, r)
+		if r.Method == "OPTIONS" { return }
+		
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		
+		var protoPayload pb.TelemetryPayload
+		if err := proto.Unmarshal(body, &protoPayload); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		payload := grpc_internal.MapToServicePayload(&protoPayload)
 		telemetryService.ProcessTelemetry(payload)
 		w.WriteHeader(http.StatusOK)
 	})
@@ -96,6 +119,7 @@ func main() {
 
 	mux := http.DefaultServeMux
 	mixedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Incoming request: %s %s | Proto: %d.%d | Content-Type: %s", r.Method, r.URL.Path, r.ProtoMajor, r.ProtoMinor, r.Header.Get("Content-Type"))
 		if r.ProtoMajor == 2 && strings.HasPrefix(r.Header.Get("Content-Type"), "application/grpc") {
 			grpcServer.ServeHTTP(w, r)
 		} else {

@@ -18,7 +18,7 @@ func NewTelemetryServer(svc *service.TelemetryService) *TelemetryServer {
 	return &TelemetryServer{svc: svc}
 }
 
-func mapToServicePayload(req *pb.TelemetryPayload) service.TelemetryPayload {
+func MapToServicePayload(req *pb.TelemetryPayload) service.TelemetryPayload {
 	procs := make([]service.ProcessInfo, len(req.TopProcesses))
 	for i, p := range req.TopProcesses {
 		procs[i] = service.ProcessInfo{
@@ -42,7 +42,7 @@ func mapToServicePayload(req *pb.TelemetryPayload) service.TelemetryPayload {
 }
 
 func (s *TelemetryServer) SendTelemetry(ctx context.Context, req *pb.TelemetryPayload) (*pb.TelemetryResponse, error) {
-	payload := mapToServicePayload(req)
+	payload := MapToServicePayload(req)
 	err := s.svc.ProcessTelemetry(payload)
 	if err != nil {
 		return &pb.TelemetryResponse{Success: false, Message: err.Error()}, nil
@@ -61,7 +61,7 @@ func (s *TelemetryServer) StreamTelemetry(stream pb.TelemetryService_StreamTelem
 			return err
 		}
 		
-		payload := mapToServicePayload(req)
+		payload := MapToServicePayload(req)
 		s.svc.ProcessTelemetry(payload)
 	}
 }

@@ -2,33 +2,32 @@
 #include <iostream>
 
 ApiClient::ApiClient(const std::string& endpoint) {
-    std::shared_ptr<grpc::ChannelCredentials> creds;
-    if (endpoint.find(":443") != std::string::npos || endpoint.find("onrender.com") != std::string::npos) {
-        creds = grpc::SslCredentials(grpc::SslCredentialsOptions());
-    } else {
-        creds = grpc::InsecureChannelCredentials();
+    endpoint_ = endpoint;
+    // Strip port if present for the HTTP URL
+    size_t colon_pos = endpoint_.find(":");
+    if (colon_pos != std::string::npos) {
+        endpoint_ = endpoint_.substr(0, colon_pos);
     }
-    auto channel = grpc::CreateChannel(endpoint, creds);
-    stub_ = telemetry::TelemetryService::NewStub(channel);
 }
 
 bool ApiClient::sendTelemetry(const telemetry::TelemetryPayload& payload) {
-    telemetry::TelemetryResponse response;
-    grpc::ClientContext context;
+    std::string binary_data = payload.SerializeAsString();
     
-    // timeout for the rpc call
-    gpr_timespec deadline;
-    deadline.tv_sec = 2;
-    deadline.tv_nsec = 0;
-    deadline.clock_type = GPR_TIMESPAN;
-    context.set_deadline(deadline);
-
-    grpc::Status status = stub_->SendTelemetry(&context, payload, &response);
+    std::string cmd = "curl -s -X POST -H 'Content-Type: application/octet-stream' --data-binary @- https://" + endpoint_ + "/api/telemetry/binary";
     
-    if (status.ok()) {
-        return response.success();
+    FILE* pipe = popen(cmd.c_str(), "w");
+    if (!pipe) {
+        std::cerr << "Failed to open pipe for curl" << std::endl;
+        return false;
+    }
+    
+    fwrite(binary_data.data(), 1, binary_data.size(), pipe);
+    int status = pclose(pipe);
+    
+    if (status == 0) {
+        return true;
     } else {
-        std::cerr << "gRPC failed: " << status.error_code() << ": " << status.error_message() << std::endl;
+        std::cerr << "HTTP POST failed with curl exit status: " << status << std::endl;
         return false;
     }
 }

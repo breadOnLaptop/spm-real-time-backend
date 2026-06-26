@@ -12,7 +12,7 @@ public:
     bool sendTelemetry(const telemetry::TelemetryPayload& payload);
 
 private:
-    std::unique_ptr<telemetry::TelemetryService::Stub> stub_;
+    std::string endpoint_;
 };
 
 #endif
